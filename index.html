@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>KWLG School Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#C8102E;--dark:#111;
+  --mon:#C8102E;--mon-light:#FDE8EB;--mon-border:#f5b8c0;
+  --wed:#B8860B;--wed-light:#FFFDE7;--wed-border:#ffe082;
+  --fri:#2E7D32;--fri-light:#E8F5E9;--fri-border:#a5d6a7;
+  --pipe:#1565C0;--pipe-light:#E3F2FD;--pipe-border:#90CAF9;
+  --gray:#f5f5f5;--gray2:#e0e0e0;--gray3:#9e9e9e;--text:#111;--text2:#555;
+  --s-ontrack:#1b5e20;--s-ontrack-bg:#e8f5e9;
+  --s-checkin:#e65100;--s-checkin-bg:#fff3e0;
+  --s-quiet:#bf360c;--s-quiet-bg:#fbe9e7;
+  --s-deadline:#c62828;--s-deadline-bg:#ffebee;
+  --s-never:#4a148c;--s-never-bg:#f3e5f5;
+  --s-expired:#424242;--s-expired-bg:#f5f5f5;
+}
+body{font-family:'Inter',sans-serif;background:#f4f4f4;color:var(--text);min-height:100vh}
+.header{background:var(--dark);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.header-brand{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:.06em}
+.header-brand span{color:var(--red)}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-date{font-size:12px;color:#aaa}
+.sync-status{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600}
+.sync-ok{background:#1b5e20;color:#fff}
+.sync-saving{background:#e65100;color:#fff}
+.sync-error{background:#c62828;color:#fff}
+.btn{padding:7px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--red);color:#fff}.btn-primary:hover{background:#a50d24}
+.btn-ghost{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15)}.btn-ghost:hover{background:rgba(255,255,255,.15)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:16px}
+.loading-spinner{width:40px;height:40px;border:3px solid #e0e0e0;border-top-color:var(--red);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.summary{background:#fff;border-bottom:1px solid var(--gray2);padding:10px 24px;display:flex;gap:20px;align-items:center;overflow-x:auto;flex-wrap:wrap}
+.summary-card{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.summary-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.summary-label{font-size:11px;color:var(--text2)}
+.summary-num{font-size:13px;font-weight:700}
+.summary-divider{width:1px;height:18px;background:var(--gray2);flex-shrink:0}
+.tabs{background:#fff;border-bottom:2px solid var(--gray2);padding:0 24px;display:flex;gap:0;overflow-x:auto}
+.tab{padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;color:var(--text2);display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--text)}
+.tab.mon.active{color:var(--mon);border-bottom-color:var(--mon)}
+.tab.wed.active{color:var(--wed);border-bottom-color:var(--wed)}
+.tab.fri.active{color:var(--fri);border-bottom-color:var(--fri)}
+.tab.pipe.active{color:var(--pipe);border-bottom-color:var(--pipe)}
+.tab.ref.active{color:#6a1b9a;border-bottom-color:#6a1b9a}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;font-size:11px;font-weight:700;background:var(--gray);color:var(--text2)}
+.tab.active .tab-count{background:var(--red);color:#fff}
+.tab.pipe.active .tab-count{background:var(--pipe);color:#fff}
+.search-bar{padding:10px 24px;background:#fff;border-bottom:1px solid var(--gray2)}
+.search-input{width:100%;max-width:400px;padding:7px 12px;border:1px solid var(--gray2);border-radius:7px;font-size:13px;font-family:inherit}
+.search-input:focus{outline:none;border-color:var(--red)}
+.content{padding:18px 24px;max-width:1400px;margin:0 auto}
+.section-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;padding:7px 12px;border-radius:6px;display:flex;align-items:center;gap:8px}
+.section-label.mon{color:var(--mon);background:var(--mon-light);border:1px solid var(--mon-border)}
+.section-label.wed{color:var(--wed);background:var(--wed-light);border:1px solid var(--wed-border)}
+.section-label.fri{color:var(--fri);background:var(--fri-light);border:1px solid var(--fri-border)}
+.section-label.pipe{color:var(--pipe);background:var(--pipe-light);border:1px solid var(--pipe-border)}
+.section-count{font-weight:400;opacity:.7}
+.cards{display:flex;flex-direction:column;gap:7px;margin-bottom:24px}
+.card{background:#fff;border-radius:10px;border:1px solid var(--gray2);overflow:hidden;transition:box-shadow .15s}
+.card:hover{box-shadow:0 2px 12px rgba(0,0,0,.09)}
+.card-header{display:grid;grid-template-columns:4px 1fr auto;cursor:pointer}
+.card-accent{width:4px;min-height:54px}
+.card-accent.mon{background:var(--mon)}.card-accent.wed{background:var(--wed)}.card-accent.fri{background:var(--fri)}.card-accent.pipe{background:var(--pipe)}
+.card-main{padding:11px 14px;display:flex;align-items:center;gap:14px;flex:1;min-width:0}
+.card-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-phone{font-size:12px;color:var(--text2)}
+.card-ref-badge{display:inline-flex;align-items:center;gap:4px;background:#f3e5f5;color:#6a1b9a;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-top:3px}
+.pipeline-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-top:3px}
+.card-meta{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.card-stat{text-align:center}
+.card-stat-num{font-size:13px;font-weight:700;line-height:1}
+.card-stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+.card-stat-num.warn{color:var(--red)}
+.card-actions{padding:11px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.status-badge{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap}
+.s-ON{background:var(--s-ontrack-bg);color:var(--s-ontrack)}
+.s-CHECK{background:var(--s-checkin-bg);color:var(--s-checkin)}
+.s-GONE{background:var(--s-quiet-bg);color:var(--s-quiet)}
+.s-DEADLINE{background:var(--s-deadline-bg);color:var(--s-deadline)}
+.s-NEVER{background:var(--s-never-bg);color:var(--s-never)}
+.s-EXPIRED{background:var(--s-expired-bg);color:var(--s-expired)}
+.chevron{color:var(--gray3);font-size:15px;transition:transform .2s;padding:0 6px}
+.card.open .chevron{transform:rotate(180deg)}
+.card-body{display:none;border-top:1px solid var(--gray2);padding:16px}
+.card.open .card-body{display:block}
+.card-body-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field-group{display:flex;flex-direction:column;gap:11px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray3)}
+.field input,.field textarea,.field select{border:1px solid var(--gray2);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--text);background:#fff;transition:border-color .15s;width:100%}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--red)}
+.field textarea{resize:vertical;min-height:110px;line-height:1.5}
+.notes-hint{font-size:11px;color:var(--gray3);margin-top:3px}
+.save-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--gray2)}
+.save-confirm{font-size:12px;color:#2e7d32;font-weight:600;display:none;align-items:center;gap:4px}
+.save-confirm.show{display:flex}
+.autocomplete-wrap{position:relative}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--gray2);border-radius:6px;z-index:50;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);display:none}
+.autocomplete-list.open{display:block}
+.autocomplete-item{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--gray2)}
+.autocomplete-item:last-child{border-bottom:none}
+.autocomplete-item:hover{background:var(--gray)}
+.pipeline-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.pipeline-col{background:#fff;border-radius:10px;border:1px solid var(--gray2);overflow:hidden}
+.pipeline-col-header{padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--gray2)}
+.pipeline-col-item{padding:10px 14px;border-bottom:1px solid var(--gray)}
+.pipeline-col-item:last-child{border-bottom:none}
+.pipeline-col-item-name{font-size:13px;font-weight:600;color:var(--text)}
+.pipeline-col-item-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.pipeline-empty{font-size:12px;color:var(--gray3);font-style:italic;padding:10px 14px}
+.ref-agent-card{background:#fff;border-radius:10px;border:1px solid var(--gray2);margin-bottom:8px;overflow:hidden}
+.ref-agent-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.ref-agent-name{font-weight:700;font-size:15px}
+.ref-agent-email{font-size:12px;color:var(--text2)}
+.ref-agent-count{background:#f3e5f5;color:#6a1b9a;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px}
+.ref-agent-body{display:none;border-top:1px solid var(--gray2);padding:12px 16px}
+.ref-agent-card.open .ref-agent-body{display:block}
+.ref-agent-card.open .chevron{transform:rotate(180deg)}
+.ref-student-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray)}
+.ref-student-row:last-child{border-bottom:none}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--gray2);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:16px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray3)}
+.modal-body{padding:18px 22px;display:flex;flex-direction:column;gap:13px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--gray2);display:flex;justify-content:flex-end;gap:8px}
+.empty{text-align:center;padding:48px 24px;color:var(--gray3)}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty-text{font-size:14px}
+@media(max-width:640px){
+  .header{padding:0 12px}.content{padding:12px}
+  .card-body-grid{grid-template-columns:1fr}
+  .card-stat:nth-child(n+3){display:none}
+  .pipeline-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">KW <span>Legacy</span> Group</div>
+  <div class="header-right">
+    <span class="sync-status sync-ok" id="syncStatus">Connected</span>
+    <div class="header-date" id="headerDate"></div>
+    <button class="btn btn-ghost btn-sm" onclick="toggleSearch()">Search</button>
+    <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add Student</button>
+  </div>
+</div>
+
+<div id="loadingScreen" class="loading">
+  <div class="loading-spinner"></div>
+  <div style="font-size:14px;color:#666">Loading students from database...</div>
+</div>
+
+<div id="appContent" style="display:none">
+  <div class="summary" id="summaryBar"></div>
+  <div class="search-bar" id="searchBar" style="display:none">
+    <input class="search-input" id="searchInput" placeholder="Search by name, phone, or email..." oninput="renderAll()"/>
+  </div>
+  <div class="tabs" id="tabBar"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add New Student</div>
+      <button class="modal-close" onclick="closeAddModal()">x</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><div class="field-label">Full Name *</div><input id="new-name" placeholder="First Last"/></div>
+      <div class="field"><div class="field-label">Phone</div><input id="new-phone" placeholder="859.000.0000"/></div>
+      <div class="field"><div class="field-label">Email</div><input id="new-email" placeholder="email@example.com"/></div>
+      <div class="field"><div class="field-label">Start Date</div><input id="new-start" type="date"/></div>
+      <div class="field"><div class="field-label">End Date (auto-fills 6 months)</div><input id="new-end" type="date"/></div>
+      <div class="field">
+        <div class="field-label">Referred By (KWLG Agent)</div>
+        <div class="autocomplete-wrap">
+          <input id="new-ref" placeholder="Start typing agent name..." autocomplete="off" oninput="acFilter('new-ref','new-ref-list','new-ref-val')"/>
+          <div class="autocomplete-list" id="new-ref-list"></div>
+          <input type="hidden" id="new-ref-val"/>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Pipeline Stage</div>
+        <select id="new-pipeline">
+          <option value="">In Kaplan</option>
+          <option value="proctored">Proctored Passed</option>
+          <option value="state">State Exam Prep</option>
+          <option value="licensed">Licensed</option>
+          <option value="onboarding">Onboarding</option>
+          <option value="agent">Agent</option>
+        </select>
+      </div>
+      <div class="field"><div class="field-label">Initial Note</div><textarea id="new-note" placeholder="e.g. 8/21 Introduced myself via text." rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewStudent()">Add Student</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const AGENTS = [{"name": "Alex Baxter", "email": "alexreidb@gmail.com", "phone": "872-276-0687"}, {"name": "Alexis Estep", "email": "alexis.stanley2@gmail.com", "phone": "606-767-1476"}, {"name": "Amanda Mitchell", "email": "Amanda.mitchell34@Yahoo.com", "phone": "859-582-9229"}, {"name": "Amarri Persley", "email": "amarripersley@KW.com", "phone": "502-591-9170"}, {"name": "Amy Alexander", "email": "Amylalexander@KW.com", "phone": "859-248-5457"}, {"name": "Amy Stewart", "email": "soldbyamy01@gmail.com", "phone": "606-923-6528"}, {"name": "Angela Harden", "email": "angelasellsky@KW.com", "phone": "859-209-0842"}, {"name": "Angelika (Angie) Weaver", "email": "angelikaweaver@KW.com", "phone": "606-215-0496"}, {"name": "Ashleigh Markwell", "email": "Ashleighmarkwell@KW.com", "phone": "606-923-4030"}, {"name": "Ashley Peercy", "email": "ashleypeercy2004@gmail.com", "phone": "859-661-0272"}, {"name": "Autumn Ballard", "email": "autumn@themateyokegroup.com", "phone": "859-302-3799"}, {"name": "Ben Lawwill", "email": "benlawwill@kw.com", "phone": "859-361-6880"}, {"name": "Beth Rice", "email": "bethrice@kw.com", "phone": "859-200-0644"}, {"name": "Bill Deaton", "email": "billdeatonrealty@gmail.com", "phone": "606-402-1157"}, {"name": "Brad Schooler", "email": "brad.schooler@envoymortgage.com", "phone": "859-494-6004"}, {"name": "Brandon Maggard", "email": "brandonmaggard@KW.com", "phone": "859-613-9398"}, {"name": "Bret McIntosh", "email": "BretMcIntosh@KW.com", "phone": "859-339-4887"}, {"name": "Brittany Sparks", "email": "brittanysparks@KW.com", "phone": "606-975-0764"}, {"name": "Carl Weaver", "email": "cdweaver46@gmail.com", "phone": "606-657-1821"}, {"name": "Carla Brock", "email": "carlabrockrealtor@gmail.com", "phone": "859-333-1243"}, {"name": "Carla Treadway", "email": "carlatreadway@KW.com", "phone": "859-200-1922"}, {"name": "Cassandra Havens Reed", "email": "Cassandrareed@KW.com", "phone": "859-274-7921"}, {"name": "Celeste Carter/McAfee", "email": "celestesoldit@gmail.com", "phone": "859-661-9116"}, {"name": "Chandler Williams", "email": "chandlerwilliams@KW.com", "phone": "859-302-4418"}, {"name": "Charles \"Cody\" Moses", "email": "cody.moses@iivhometeam.com", "phone": "606-214-0025"}, {"name": "Chiferra Burgin", "email": "chiferraburgin@kw.com", "phone": "859-489-2996"}, {"name": "Chris Davidson", "email": "Chrisdavidson@KW.com", "phone": "859-314-5199"}, {"name": "Chris Fletcher", "email": "Teammvp.Fletch@gmail.com", "phone": "859-582-6696"}, {"name": "Chris Hutchinson II", "email": "chris@ashlandareaproperty.com", "phone": "606-694-3677"}, {"name": "Chris Lackey", "email": "Listwithlackey@KW.com", "phone": "606-219-3605"}, {"name": "Christina Bucher", "email": "Christinabucher@KW.com", "phone": "859-200-4824"}, {"name": "Cindy Conley Jones", "email": "cindyconleyjones1@gmail.com", "phone": "606-232-1067"}, {"name": "Clay Hall", "email": "challhomes@gmail.com", "phone": "859-457-7000"}, {"name": "Clay Thomas", "email": "claythomas@kybrickhouse.com", "phone": "859-539-1677"}, {"name": "Courtney Jackson", "email": "courtneyljackson@kw.com", "phone": "859-339-8142"}, {"name": "Dalton Hutton", "email": "Daltonhutton@KW.com", "phone": "606-308-9146"}, {"name": "Dalton Stanley", "email": "dalton@ShortTermRealtyPros.com", "phone": "606-767-1475"}, {"name": "Dana Gentry", "email": "danagentry@kw.com", "phone": "859-396-2644"}, {"name": "Danielle Fields", "email": "danielle@bluegrassagent.com", "phone": "606-484-0968"}, {"name": "Danielle Moore", "email": "dmoore6@KW.com", "phone": "606-923-9119"}, {"name": "Danny Brown", "email": "daniel@kyhomesbybrown.com", "phone": "304-208-6716"}, {"name": "Darienne Hensley", "email": "dariennehensley@KW.com", "phone": "502-645-9531"}, {"name": "Darlene Stocker", "email": "RDStocker93@gmail.com", "phone": "859-314-7359"}, {"name": "Darrell  (Dee) Smith", "email": "smithpropertiescky@gmail.com", "phone": "859-868-7003"}, {"name": "David Sullender", "email": "david.sullender@outlook.com", "phone": "606-922-4743"}, {"name": "Deanna Applegate", "email": "deannaapplegate@KW.com", "phone": "859-302-0898"}, {"name": "Debra Dennis", "email": "debra-dennis@KW.com", "phone": "859-274-8545"}, {"name": "Darrell  (Dee) Smith", "email": "smithpropertiescky@gmail.com", "phone": "859-868-7003"}, {"name": "Delzie Kelly", "email": "delziekelly@KW.com", "phone": "859-608-0386"}, {"name": "Derrick (\"DJ\") Quarles", "email": "dj@iivhometeam.com", "phone": "270-847-2569"}, {"name": "Diana Fields", "email": "dianafields@kw.com", "phone": "859-621-0604"}, {"name": "Donnie Oliver", "email": "donnie.oliver@KW.com", "phone": "606-234-5055"}, {"name": "Dustin Pennington", "email": "dustinpennington@KW.com", "phone": "606-548-0340"}, {"name": "Dylan Ballard", "email": "DylanBallard@kw.com", "phone": "859-302-2970"}, {"name": "Ed Lainhart", "email": "Pastorlainhart@KW.com", "phone": "859-408-9537"}, {"name": "Edward Priest", "email": "edward.priest@iivhometeam.com", "phone": "425-236-9811"}, {"name": "Emily Calmes", "email": "emilycalmes@KW.com", "phone": "606-975-1330"}, {"name": "Emily Gregory", "email": "emilygregory@kw.com", "phone": "815-985-7995"}, {"name": "Emily Kingery", "email": "Kingery0363@gmail.com", "phone": "859-302-0363"}, {"name": "Eric Abney", "email": "ericabney@KW.com", "phone": "503-370-7105"}, {"name": "Eric Sizemore", "email": "Eric.sizemore@KW.com", "phone": "606-231-6335"}, {"name": "Erica Clark", "email": "ericaclark@KW.com", "phone": "859-302-3723"}, {"name": "Erica Smith", "email": "ericamullins23@gmail.com", "phone": "606-922-8173"}, {"name": "Fouad Froukh", "email": "cuts.on.lime@gmail.com", "phone": "859-699-9913"}, {"name": "Glen Lesnau", "email": "glen@Kybrickhouse.com", "phone": "859-948-3725"}, {"name": "Hannah Meade", "email": "hannahmeade@kw.com", "phone": "606-748-8150"}, {"name": "Harry (Sonny) Rhyne", "email": "Sonnyrhyne@KW.com", "phone": "720-737-8467"}, {"name": "Heather Brockman", "email": "heatherbrockman@kw.com", "phone": "859-358-1756"}, {"name": "Heather Flanagan", "email": "heather.flanagan@KW.com", "phone": "270-535-9079"}, {"name": "Heather Nelsen", "email": "heathernelsen@KW.com", "phone": "912-441-0878"}, {"name": "Holly Kearns", "email": "hkearns@KW.com", "phone": "859-237-6200"}, {"name": "Jackie Riley", "email": "jackie.riley@kw.com", "phone": "859-358-2395"}, {"name": "James Abrams", "email": "Jamesabrams94@gmail.com", "phone": "606-465-8567"}, {"name": "Janet Skinner", "email": "janetskinner@kw.com", "phone": "859-693-6034"}, {"name": "Jared Shoemaker", "email": "Jared@Themateyokegroup.com", "phone": "606-922-9235"}, {"name": "Jason Smith", "email": "Jasonsmith@KW.com", "phone": "859-358-5563"}, {"name": "Jeannie Kruckas", "email": "jkruckas@kw.com", "phone": "859-619-3067"}, {"name": "Jen Dray", "email": "jen@sellkentucky.com", "phone": "859-661-2279"}, {"name": "Jenn Vickers", "email": "TeamMVP.Jennifer@gmail.com", "phone": "859-893-4008"}, {"name": "Jennifer  Thomas", "email": "", "phone": "502-316-0817"}, {"name": "Jenny Mateyoke", "email": "jenny@themateyokegroup.com", "phone": "859-533-9427"}, {"name": "Jessica Janes", "email": "jessicajanes@KW.com", "phone": "859-779-1290"}, {"name": "Jessica White", "email": "jesswhite@KW.com", "phone": "859-582-2812"}, {"name": "Joe Kerns", "email": "Joekerns73@yahoo.com", "phone": "859-893-4476"}, {"name": "Jordan Thomas", "email": "jordanthomas@kybrickhouse.com", "phone": "502-370-5364"}, {"name": "Joseph Miller", "email": "Josephmiller@KW.com", "phone": "859-595-0268"}, {"name": "Justin Eversole", "email": "Justin@sellkentucky.com", "phone": "859-248-6124"}, {"name": "Kaitlyn (Katie) Brown", "email": "Katiebrown1@KW.com", "phone": "270-459-2486"}, {"name": "Kaitlyn Hurst", "email": "kaitlynhurst@KW.com", "phone": "606-261-0215"}, {"name": "Katherine Parks", "email": "Katherineparks@KW.com", "phone": "859-404-6264"}, {"name": "Katie Allen", "email": "katieallensells@KW.com", "phone": "859-585-5967"}, {"name": "Katrina Fields", "email": "katrinakyrep@gmail.com", "phone": "859-200-5009"}, {"name": "Kelley B. Kelley", "email": "Kbk.kyrealtor@gmail.com", "phone": "606-269-1506"}, {"name": "Kelly Gibson", "email": "kellygibson@kw.com", "phone": "606-547-5060"}, {"name": "Kelsey Kelley", "email": "knkelley@kw.com", "phone": "859-779-0893"}, {"name": "Kendria Carty", "email": "Kendriacarty@KW.com", "phone": "606-356-8535"}, {"name": "Kim Nelson", "email": "Kimberly-nelson@KW.com", "phone": "304-544-8329"}, {"name": "Kim Rankin", "email": "kimrankin@KW.com", "phone": "859-229-5030"}, {"name": "Klarans \"KJ\" Jones", "email": "kj.jones@iivhometeam.com", "phone": "502-593-5803"}, {"name": "Koko  Lukonga", "email": "kokolukonga@KW.com", "phone": "859-705-8229"}, {"name": "Kris Dargavell", "email": "Krisdargavellhomes@kw.com", "phone": "859-626-2315"}, {"name": "Kyndel Brown", "email": "kyndelbrownrealtor@gmail.com", "phone": "859-544-0017"}, {"name": "Laura Chitwood", "email": "Laurachitwood.realtor@gmail.com", "phone": "859-361-7285"}, {"name": "LeeAnne Martin", "email": "teammvp.lee@gmail.com", "phone": "859-779-1410"}, {"name": "Lexy Brandenburg", "email": "lexybrandenburg@KW.com", "phone": "606-923-8066"}, {"name": "Lindsey Wagers", "email": "lwagers@kw.com", "phone": "606-767-3284"}, {"name": "Lisa Fischer", "email": "realtor.lisa.fischer@gmail.com", "phone": "606-255-0357"}, {"name": "Logan Spurgeon", "email": "loganspurgeon@KW.com", "phone": ""}, {"name": "Luigi Angelucci", "email": "Luigi@themateyokegroup.com", "phone": "619-261-9046"}, {"name": "Luke Greer", "email": "lukegreer@KW.com", "phone": "606-331-2755"}, {"name": "Lynley Day", "email": "Lynleyday@KW.com", "phone": "859-358-1027"}, {"name": "Madison McClary", "email": "Madison.mcclary07@gmail.com", "phone": "859-302-0318"}, {"name": "Madison Shuey", "email": "Madisonshuey@kw.com", "phone": "859-329-3121"}, {"name": "Marlana Wallace", "email": "marlanawallace@kw.com", "phone": "917-530-0179"}, {"name": "Mary Jo Baker", "email": "Maryjo@sellkentucky.com", "phone": "859-983-9769"}, {"name": "Megan McCoy", "email": "Meganmccoyrealty@gmail.com", "phone": "859-595-2355"}, {"name": "Meggan Batey", "email": "Megganbatey@kw.com", "phone": "352-318-8261"}, {"name": "Melanie Lee", "email": "melanie@sellkentucky.com", "phone": "859-314-7748"}, {"name": "Melissa Brown", "email": "Melissakbrown@kw.com", "phone": "859-274-3714"}, {"name": "Michelle Brengartner", "email": "michellebrengartner@KW.com", "phone": "772-913-3028"}, {"name": "Michelle Hawkey", "email": "michelle@themateyokegroup.com", "phone": "606-615-1686"}, {"name": "Mike Miller", "email": "lmmiller@kw.com", "phone": "859-661-7444"}, {"name": "Nancy Morgan", "email": "nancymorgan@kw.com", "phone": "859-661-7627"}, {"name": "Nikki Trahan", "email": "nikkit@kw.com", "phone": "859-684-6973"}, {"name": "Paige Luxon", "email": "paigeluxon@yahoo.com", "phone": "859-200-4852"}, {"name": "Pearce Dalton", "email": "pearce@iivhometeam.com", "phone": "859-519-8180"}, {"name": "Peyton Leet", "email": "peyton@landgrouptitle.com", "phone": "859-948-6806"}, {"name": "Priscilla Wagers", "email": "Pwagers@KW.com", "phone": "606-813-2003"}, {"name": "Rachel Allen", "email": "rachel@Themateyokegroup.com \nAdmin@themateyokegroup.com", "phone": "502-314-5220"}, {"name": "Rachel Bentley", "email": "rachelbentley@KW.com", "phone": "859-979-2264"}, {"name": "Randalene Sergent", "email": "randalenesergent@kw.com", "phone": "606-315-3450"}, {"name": "Rebakah Goodpaster", "email": "rebakah@BluegrassAgent.com", "phone": "859-585-8970"}, {"name": "Renee Huntzinger", "email": "renee@sellkentucky.com", "phone": "859-893-0192"}, {"name": "Robin Jones", "email": "robin@sellkentucky.com", "phone": "859-661-2010"}, {"name": "Ryan Carter", "email": "ryancarter@kw.com", "phone": "615-979-2034"}, {"name": "Sabra Webster", "email": "Sabranicole@KW.com", "phone": "859-582-5836"}, {"name": "Sammy Singleton", "email": "Sammy.singleton@KW.com", "phone": "606-875-0406"}, {"name": "Shane O'Donley", "email": "shaneo@KW.com", "phone": "859-229-1524"}, {"name": "Shannon Bucher", "email": "shannonbucher@KW.com", "phone": "859-200-4823"}, {"name": "Shaunda  Hildebrand", "email": "shaundahildebrandre@KW.com", "phone": "859-582-1161"}, {"name": "Sherri Miller", "email": "sherrimiller@kw.com", "phone": "859-779-8964"}, {"name": "Sierra  O'Toole", "email": "sierraotoole@KW.com", "phone": "606-367-9268"}, {"name": "Stacey Thurman", "email": "staceyethurman@gmail.com", "phone": "502-510-0472"}, {"name": "Stephanie Kelemen", "email": "stephaniekelemen@kw.com", "phone": "859-608-5249"}, {"name": "Susan Cassidy", "email": "Susan@sellkentucky.com", "phone": "606-682-0493"}, {"name": "Susan Moore", "email": "susan13@kw.com", "phone": "859-404-8174"}, {"name": "Tammy Hill", "email": "tammyhill@kw.com", "phone": "859-582-0962"}, {"name": "Tenna Johnson", "email": "tennajohnson@KW.com", "phone": "859-972-2101"}, {"name": "Terri  Kelly", "email": "terrikelly@kw.com", "phone": "859-582-5384"}, {"name": "Tina Witt", "email": "tinawitt@kw.com", "phone": "859-661-1225"}, {"name": "Tobie Moore", "email": "tobiemoore@outlook.com", "phone": "606-571-2685"}, {"name": "Tony Christian", "email": "tonychristian@KW.com", "phone": "859-625-8533"}, {"name": "Tonya Stevens", "email": "tonyastevens@kw.com", "phone": "859-893-4848"}, {"name": "Tonya  Beard", "email": "Tonyabeard@KW.com", "phone": "606-975-6549"}, {"name": "Tosha Williamson", "email": "toshawilliamsonRE@gmail.com", "phone": "606-560-8253"}, {"name": "Tricia Eversole", "email": "tricia@sellkentucky.com", "phone": "859-492-6443"}, {"name": "Whitney Martin", "email": "whitney_martin@KW.com", "phone": "859-469-0200"}, {"name": "Windi Rader", "email": "windirader@KW.com", "phone": "859-229-4438"}, {"name": "Yvette Kelly", "email": "yvettekelly@kw.com", "phone": "859-582-5977"}, {"name": "Zoie Powers Degise", "email": "zoiedegise@kw.com", "phone": "810-610-1669"}, {"name": "Zova Rothchild", "email": "Zova@Themateyokegroup.com", "phone": "859-806-1992"}, {"name": "Richmond New Agent", "email": "2026-06-08 00:00:00", "phone": "Mt Sterling"}, {"name": "Ashland Nicholasville", "email": "", "phone": ""}];
+const SEED   = [{"name": "Audrey Ballard", "phone": "859.408.8419", "email": "audreyballard2013@gmail.com", "start": "06/24/2025", "end": "12/24/2025", "lastLogin": "02/21/2026", "seatHrs": 117.4, "referredBy": "Amy Alexander", "pipeline": "", "notes": "8/10 Checked in on studies.\n---\n7/31 Inquired about exam dates per Yvette's note. Says that she is still studying.\n---\n7/20 Checked in with Amy (Audrey's Sponsor) asking for an update.\n---\n6/24 Encouraged Audrey about retesting. No response.\n---\n6/15 Reached out due to no response. Asked if still actively pursuing license."}, {"name": "Kristian Cox", "phone": "606.356.8458", "email": "heckman_kris@hotmail.com", "start": "07/08/2025", "end": "01/08/2026", "lastLogin": "01/07/2026", "seatHrs": 89.2, "referredBy": "", "pipeline": "", "notes": "7/20 Inquired about licensing and timeframe. Started a new job and needs some time to study and get funding for licensing.\n---\n6/15 Followed up about study materials.\n---\n5/27 Followed up asking about exam retesting.\n---\n4/22 Asked for study material. Emailed it to her.\n---\n2/9 Asked about exam dates.\n---\n1/21 Congratulated finishing courses.\n---\n12/05 Reached out reminding of approaching deadline."}, {"name": "Madison Damron", "phone": "859.432.6690", "email": "damron30@icloud.com", "start": "08/20/2025", "end": "02/20/2026", "lastLogin": "01/30/2026", "seatHrs": 32.3, "referredBy": "", "pipeline": "proctored", "notes": "7/29 Inquired about possible exam plans. No response.\n---\n7/20 Inquired about licensing. Has figured out finances.\n---\n6/10 Just started new job, not financially able to start career atm.\n---\n2/16 Madison passed her proctored exam.\n---\n01/09 Congratulated on working on classes. Emailed study materials."}, {"name": "Morgan Chandler", "phone": "859.398.3265", "email": "morgan.chandler34@gmail.com", "start": "09/04/2025", "end": "03/04/2026", "lastLogin": "01/17/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "7/20 Inquired about licensing process and timeframes."}, {"name": "Alyssa Christensen", "phone": "606.369.9666", "email": "alyssabrooke96@yahoo.com", "start": "02/11/2026", "end": "11/09/2026", "lastLogin": "07/02/2026", "seatHrs": 100, "referredBy": "", "pipeline": "", "notes": "8/13 Extended courses through October. Deadline is now 11/09.\n---\n6/30 Called asking about extensions.\n---\n6/15 Congratulated on progress.\n---\n2/11 Given new account to reset 6 month scholarship.\n---\n01/09 Introduced myself."}, {"name": "Charles Singleton", "phone": "859.314.1200", "email": "singletoncharlie0@gmail.com", "start": "10/11/2025", "end": "07/20/2026", "lastLogin": "06/07/2026", "seatHrs": 54.2, "referredBy": "", "pipeline": "", "notes": "3/4 Congratulated Charlie on passing one of the exams.\n---\n1/14 Congratulated for flying through courses. No response."}, {"name": "Charlotte Brewer", "phone": "606.682.5600", "email": "charlottebrewer@ymail.com", "start": "10/20/2025", "end": "07/20/2026", "lastLogin": "06/17/2026", "seatHrs": 54.2, "referredBy": "", "pipeline": "", "notes": "8/10 Inquired about possible exam dates.\n---\n7/20 Inquired about exam dates. Testing early August.\n---\n6/08 Congratulated on progress. Questions about state and national exams.\n---\n2/11 Dad passed in December. Hopes to test beginning of April."}, {"name": "Harleigh Spartman", "phone": "859.940.1067", "email": "harleighdanielle1@gmail.com", "start": "10/23/2025", "end": "06/11/2026", "lastLogin": "06/09/2026", "seatHrs": 39.5, "referredBy": "", "pipeline": "", "notes": "8/10 Inquired about real estate courses and nearing deadline.\n---\n7/20 Reminded of nearing deadline.\n---\n7/6 Got a 60 day extension.\n---\n3/4 In an accident with extensive therapy. Still on track.\n---\n1/14 Introduced myself. No response."}, {"name": "Nerica Keller", "phone": "360.670.3572", "email": "nericakeller@yahoo.com", "start": "12/06/2025", "end": "09/06/2026", "lastLogin": "07/22/2026", "seatHrs": 81.1, "referredBy": "", "pipeline": "", "notes": "7/20 Congratulated on progress.\n---\n6/03 Applied for 3 month extension.\n---\n1/14 Encouraged about recent activity."}, {"name": "Madison Jones", "phone": "859.582.2643", "email": "madisonljonesss@gmail.com", "start": "12/15/2025", "end": "06/15/2026", "lastLogin": "06/07/2026", "seatHrs": 37.7, "referredBy": "", "pipeline": "state", "notes": "8/10 Inquired about real estate exams.\n---\n7/20 Inquired about timeframe on exams.\n---\n6/8 Congratulated on passing proctored!\n---\n1/14 Introduced myself."}, {"name": "Zachary Miller", "phone": "859.248.0985", "email": "zach.miller.1711@gmail.com", "start": "07/05/2026", "end": "07/05/2026", "lastLogin": "04/29/2026", "seatHrs": 9.1, "referredBy": "", "pipeline": "", "notes": "6/5 Reminded of nearing deadline.\n---\n2/20 Introduced myself. No response."}, {"name": "Elizabeth Cromer", "phone": "859.267.7580", "email": "ecromer724@gmail.com", "start": "01/13/2026", "end": "07/13/2026", "lastLogin": "07/11/2026", "seatHrs": 35.5, "referredBy": "", "pipeline": "", "notes": "8/10 Contacted Elizabeth about restarting in Kaplan.\n---\n7/1 Reminded about nearing deadline.\n---\n2/20 Introduced myself. Read, no response."}, {"name": "Chylon Rivers", "phone": "225.335.0955", "email": "chyrivers1234@gmail.com", "start": "01/19/2026", "end": "07/19/2026", "lastLogin": "04/21/2026", "seatHrs": 163.7, "referredBy": "", "pipeline": "proctored", "notes": "7/20 Checked in about exam dates. Testing next week.\n---\n7/8 Passed Proctored!\n---\n4/9 Tech issues on KAPLAN. Emailed study material.\n---\n2/20 Introduced myself."}, {"name": "Griffin Hines", "phone": "270.469.8829", "email": "14griffinhines@gmail.com", "start": "01/19/2026", "end": "07/19/2026", "lastLogin": "07/02/2026", "seatHrs": 20.7, "referredBy": "", "pipeline": "state", "notes": "8/10 Inquired about results.\n---\n8/5 Testing today. Sent him a text wishing him luck.\n---\n7/20 Asked about extension. Passed proctored on 7/19.\n---\n2/20 Introduced myself."}, {"name": "Michael Whisman", "phone": "606.362.7022", "email": "mikey.whisman@gmail.com", "start": "01/20/2026", "end": "07/20/2026", "lastLogin": "06/02/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "8/10 Reminded Michael of nearing deadline.\n---\n7/20 Asked about extension.\n---\n2/20 Introduced myself."}, {"name": "Natalie Kissinger", "phone": "859.699.9543", "email": "nwkissinger@gmail.com", "start": "02/09/2026", "end": "08/06/2026", "lastLogin": "05/22/2026", "seatHrs": 7, "referredBy": "", "pipeline": "", "notes": "7/20 Reminded of nearing deadline.\n---\n2/27 Introduced myself."}, {"name": "Jessica Bravo", "phone": "502.545.5474", "email": "jessica@bigredcontractingky.com", "start": "02/14/2026", "end": "08/03/2026", "lastLogin": "02/14/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "6/15 Notified of nearing deadline.\n---\n02/27 Introduced myself."}, {"name": "Cheyenne Amon", "phone": "859.200.0365", "email": "cpaigea96@gmail.com", "start": "02/11/2026", "end": "08/11/2026", "lastLogin": "07/02/2026", "seatHrs": 60.8, "referredBy": "", "pipeline": "proctored", "notes": "8/10 Congratulated Cheyenne on passing proctored.\n---\n7/28 Passed Proctored.\n---\n7/6 Congratulated on progress.\n---\n02/27 Introduced myself."}, {"name": "Caitlin Bradley", "phone": "859.771.7347", "email": "cgbradley10@gmail.com", "start": "02/12/2026", "end": "08/12/2026", "lastLogin": "06/23/2026", "seatHrs": 6.1, "referredBy": "", "pipeline": "", "notes": "6/18 Introduced myself and congratulated on progress."}, {"name": "Will Steger", "phone": "859.432.5667", "email": "willcsteger@gmail.com", "start": "02/18/2026", "end": "08/17/2026", "lastLogin": "04/14/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "4/17 Congratulated on recent activity.\n---\n4/10 Introduced myself."}, {"name": "Natacha Feola", "phone": "859.868.8128", "email": "natachafq@hotmail.com", "start": "02/23/2026", "end": "08/23/2026", "lastLogin": "08/09/2026", "seatHrs": 57, "referredBy": "", "pipeline": "", "notes": "8/10 Congratulated Natacha on recent activity.\n---\n7/24 Reminded Natacha of nearing deadline.\n---\n6/15 Congratulated on progress.\n---\n4/10 Introduced myself."}, {"name": "Cannon Peercy", "phone": "859.358.0080", "email": "peercycannon@gmail.com", "start": "02/25/2026", "end": "08/25/2026", "lastLogin": "05/28/2026", "seatHrs": 16.5, "referredBy": "", "pipeline": "", "notes": "8/10 Reminded Cannon of nearing deadline.\n---\n5/22 Congratulated on progress.\n---\n02/27 Introduced myself."}, {"name": "Elizabeth Brown", "phone": "606.422.1590", "email": "elizabethkbrown16@gmail.com", "start": "03/01/2026", "end": "09/01/2026", "lastLogin": "03/13/2026", "seatHrs": 45.1, "referredBy": "", "pipeline": "", "notes": "8/10 Reminded Elizabeth of nearing deadline.\n---\n4/17 Updating numbers. No response.\n---\n4/10 Introduced myself."}, {"name": "Kristan Jones", "phone": "859.321.8444", "email": "kristankjones@gmail.com", "start": "03/01/2026", "end": "09/01/2026", "lastLogin": "03/01/2026", "seatHrs": 2.5, "referredBy": "", "pipeline": "", "notes": "4/10 Introduced myself. No response."}, {"name": "Cheyenne Abney", "phone": "", "email": "cheyenne.abney420@gmail.com", "start": "03/10/2026", "end": "09/10/2026", "lastLogin": "07/14/2026", "seatHrs": 31.5, "referredBy": "", "pipeline": "", "notes": "8/4 Congratulated Cheyenne on progress.\n---\n7/24 Messaged asking for an update on coursework.\n---\n6/18 Congratulated on progress.\n---\n4/10 No phone number in KAPLAN."}, {"name": "Kaylee Weaver", "phone": "859.457.4820", "email": "kayleeweaver51@gmail.com", "start": "03/11/2026", "end": "09/11/2026", "lastLogin": "07/21/2026", "seatHrs": 11.7, "referredBy": "", "pipeline": "", "notes": "7/24 Congratulated on progress. Laptop was not working, but is back at it.\n---\n7/6 Congratulated on progress.\n---\n4/10 Introduced myself."}, {"name": "Melissa Gonzales", "phone": "859.684.0960", "email": "m13922515@gmail.com", "start": "03/12/2026", "end": "09/12/2026", "lastLogin": "06/07/2026", "seatHrs": 4.3, "referredBy": "", "pipeline": "", "notes": "6/18 Reached out congratulating.\n---\n4/10 Introduced myself."}, {"name": "Chasity Cruse", "phone": "859.544.0209", "email": "chasnicole23@outlook.com", "start": "03/16/2026", "end": "09/16/2026", "lastLogin": "08/12/2026", "seatHrs": 5.6, "referredBy": "", "pipeline": "", "notes": "8/13 Reminded Chasity of nearing deadline.\n---\n5/29 Congratulated on recent progress.\n---\n4/10 Introduced myself."}, {"name": "Hannah Cook", "phone": "606.309.8974", "email": "hannah_cook24@mymail.eku.edu", "start": "03/17/2026", "end": "09/17/2026", "lastLogin": "08/03/2026", "seatHrs": 28.3, "referredBy": "", "pipeline": "", "notes": "8/13 Reminded Hannah of nearing deadline.\n---\n8/4 Congratulated Hannah on progress.\n---\n7/24 Checked in after vacation. No response.\n---\n5/29 Congratulated on recent progress.\n---\n4/10 Introduced myself."}, {"name": "Stone Broadway", "phone": "713.504.8873", "email": "stone.broadway@aol.com", "start": "03/17/2026", "end": "09/17/2026", "lastLogin": "06/30/2026", "seatHrs": 82.75, "referredBy": "", "pipeline": "proctored", "notes": "6/30 Passed Proctored!\n---\n4/10 Introduced myself."}, {"name": "Rebecca Ingles", "phone": "606.315.1470", "email": "becca.tackett122@icloud.com", "start": "03/31/2026", "end": "09/30/2026", "lastLogin": "06/08/2026", "seatHrs": 3, "referredBy": "", "pipeline": "", "notes": "8/13 Reminded Rebecca of nearing deadline.\n---\n5/29 Updated numbers.\n---\n4/10 Introduced myself."}, {"name": "Miranda Quarles", "phone": "859.410.0358", "email": "miranda@iivhometeam.com", "start": "04/02/2026", "end": "10/02/2026", "lastLogin": "08/04/2026", "seatHrs": 6.8, "referredBy": "", "pipeline": "", "notes": "8/13 Inquired about plan to finish courses.\n---\n7/31 Increased seat time of 30 mins.\n---\n7/6 Congratulated on progress.\n---\n4/24 Congratulated on beginning courses."}, {"name": "Zachary Miles", "phone": "", "email": "miles11zachary@gmail.com", "start": "04/02/2026", "end": "10/02/2026", "lastLogin": "04/22/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "4/24 Updated numbers. No phone provided."}, {"name": "Ahmad Albarghouthy", "phone": "859.321.8874", "email": "ahmadbarghouthy5@gmail.com", "start": "04/05/2026", "end": "10/05/2026", "lastLogin": "06/30/2026", "seatHrs": 2.2, "referredBy": "", "pipeline": "", "notes": "6/18 Introduced myself."}, {"name": "Matthew Garrett", "phone": "606.658.1488", "email": "mbg71003@gmail.com", "start": "04/08/2026", "end": "10/08/2026", "lastLogin": "04/16/2026", "seatHrs": 10.6, "referredBy": "", "pipeline": "", "notes": "8/13 Reminded Matt of nearing deadline.\n---\n4/24 Congratulated on progress.\n---\n4/10 Introduced myself."}, {"name": "Colbie Sherrill", "phone": "859.551.8197", "email": "colbiesherrill@icloud.com", "start": "04/14/2026", "end": "10/14/2026", "lastLogin": "06/26/2026", "seatHrs": 3.5, "referredBy": "", "pipeline": "", "notes": "8/13 Reminded Colbie of nearing deadline.\n---\n6/18 Congratulated on recent progress.\n---\n4/24 Introduced myself."}, {"name": "Jeremy Tackett", "phone": "606.225.3284", "email": "tackettjeremy06@gmail.com", "start": "04/14/2026", "end": "10/14/2026", "lastLogin": "04/18/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "4/24 Introduced myself."}, {"name": "Josie Clare", "phone": "606.939.6088", "email": "clarejosie8@gmail.com", "start": "04/14/2026", "end": "10/14/2026", "lastLogin": "08/12/2026", "seatHrs": 40.7, "referredBy": "", "pipeline": "", "notes": "8/13 Congratulated Josie on 9 more hours of seat time.\n---\n7/31 Additional 3 hours of seat time.\n---\n7/6 Congratulated on progress.\n---\n4/24 Introduced myself."}, {"name": "Logan Adams", "phone": "606.513.0127", "email": "adams.m.logan@gmail.com", "start": "04/17/2026", "end": "10/17/2026", "lastLogin": "06/29/2026", "seatHrs": 3.2, "referredBy": "", "pipeline": "", "notes": "8/13 Reminded Logan of nearing deadline.\n---\n7/1 Updated numbers.\n---\n4/24 Introduced myself."}, {"name": "Cameron Hunt", "phone": "859.779.3532", "email": "cameronhunt.estates@gmail.com", "start": "04/21/2026", "end": "10/21/2026", "lastLogin": "07/29/2026", "seatHrs": 5.9, "referredBy": "", "pipeline": "", "notes": "7/31 Seat time increased by 30 mins.\n---\n7/6 Congratulated on progress.\n---\n4/24 Introduced myself."}, {"name": "Joshua Miniard", "phone": "859.338.4077", "email": "jmshootsuspsa@gmail.com", "start": "04/22/2026", "end": "10/22/2026", "lastLogin": "04/22/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "4/24 Introduced myself."}, {"name": "Timothy Barnes", "phone": "859.544.4625", "email": "tbarnes2490@icloud.com", "start": "04/27/2026", "end": "10/27/2026", "lastLogin": "", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": ""}, {"name": "Mattie Wheeler", "phone": "606.200.2957", "email": "mattie.ewhee@icloud.com", "start": "04/29/2026", "end": "10/29/2026", "lastLogin": "06/12/2026", "seatHrs": 4.9, "referredBy": "", "pipeline": "", "notes": "6/18 Updated numbers.\n---\n5/29 Introduced myself. No response."}, {"name": "Miyee Carney", "phone": "859.447.0208", "email": "miyee1992@gmail.com", "start": "05/05/2026", "end": "11/05/2026", "lastLogin": "06/26/2026", "seatHrs": 56.2, "referredBy": "", "pipeline": "proctored", "notes": "7/31 Inquired about exam dates.\n---\n7/6 Finished courses. Waiting to save up for brokerage fees.\n---\n5/29 Introduced myself."}, {"name": "Shandi Sherman", "phone": "859.413.8999", "email": "snshe84@gmail.com", "start": "05/12/2026", "end": "11/12/2026", "lastLogin": "07/24/2026", "seatHrs": 9.2, "referredBy": "", "pipeline": "", "notes": "7/31 Increased seat time by 6+ hours. Suggested making a goal date.\n---\n7/24 Checked in and congratulated on progress.\n---\n6/18 Congratulated on recent progress.\n---\n5/29 Introduced myself."}, {"name": "Abbigail Allison", "phone": "606.407.1079", "email": "abbi.allison@outlook.com", "start": "05/14/2026", "end": "11/14/2026", "lastLogin": "07/27/2026", "seatHrs": 2.5, "referredBy": "", "pipeline": "", "notes": "7/31 Started working on courses. Increased seat time of 2.5 hours.\n---\n5/29 Introduced myself."}, {"name": "Christina Wamsley", "phone": "606.923.8986", "email": "christina@localmercantileky.com", "start": "05/14/2026", "end": "11/14/2026", "lastLogin": "06/10/2026", "seatHrs": 4.9, "referredBy": "", "pipeline": "", "notes": "5/29 Introduced myself."}, {"name": "Faith Botts", "phone": "606.922.0659", "email": "faith.alexa21@yahoo.com", "start": "05/15/2026", "end": "11/15/2026", "lastLogin": "07/20/2026", "seatHrs": 28.5, "referredBy": "", "pipeline": "", "notes": "6/22 Congratulated on progress.\n---\n5/29 Introduced myself."}, {"name": "Luke White", "phone": "606.548.0321", "email": "lukewhite_3@outlook.com", "start": "05/16/2026", "end": "11/16/2026", "lastLogin": "05/20/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "5/29 Introduced myself."}, {"name": "Kayla Pennington", "phone": "859.404.4971", "email": "kayla.taulbee@hotmail.com", "start": "05/20/2026", "end": "11/20/2026", "lastLogin": "06/01/2026", "seatHrs": 0.1, "referredBy": "", "pipeline": "", "notes": ""}, {"name": "Landon Ray", "phone": "859.582.2471", "email": "landonray24@gmail.com", "start": "05/24/2026", "end": "11/24/2026", "lastLogin": "08/11/2026", "seatHrs": 49.6, "referredBy": "", "pipeline": "", "notes": "8/12 Asked about proctored exam and Kaplan affidavit.\n---\n7/31 Congratulated Landon on progress.\n---\n7/24 Getting close to end of course.\n---\n6/22 Congratulated on progress.\n---\n5/29 Introduced myself."}, {"name": "Brayden Clark", "phone": "", "email": "bvclark11@gmail.com", "start": "06/01/2026", "end": "12/01/2026", "lastLogin": "08/13/2026", "seatHrs": 23.4, "referredBy": "", "pipeline": "", "notes": "7/31 Congratulated Brayden on progress, additional 7.5+ hours.\n---\n7/24 Introduced myself to Brayden."}, {"name": "Holly Angel", "phone": "606.344.5898", "email": "willowskye10@yahoo.com", "start": "06/02/2026", "end": "12/02/2026", "lastLogin": "07/30/2026", "seatHrs": 5.6, "referredBy": "", "pipeline": "", "notes": "6/8 Congratulated on recent progress.\n---\n6/4 Signed up for a new 6 months."}, {"name": "Karen Bussell", "phone": "859.582.4329", "email": "bussellkaren80@gmail.com", "start": "06/03/2026", "end": "12/03/2026", "lastLogin": "06/03/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": ""}, {"name": "Kyle Webster", "phone": "859.248.1790", "email": "kweb362446@aol.com", "start": "06/06/2026", "end": "12/06/2026", "lastLogin": "08/12/2026", "seatHrs": 40.6, "referredBy": "", "pipeline": "", "notes": "7/31 Congratulated Kyle on 24 hours of seat time.\n---\n7/24 Introduced myself to Kyle."}, {"name": "Peter Ashby", "phone": "401.259.8292", "email": "pjashby2@gmail.com", "start": "06/07/2026", "end": "12/07/2026", "lastLogin": "06/21/2026", "seatHrs": 4.6, "referredBy": "", "pipeline": "", "notes": "7/24 Introduced myself and congratulated Peter on progress."}, {"name": "Kadin Esteppe", "phone": "859.762.7881", "email": "kadinesteppe7@gmail.com", "start": "", "end": "", "lastLogin": "", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "5/15 Checked in about proctored exam.\n---\n4/10 Introduced myself. (Mt. Sterling)"}, {"name": "Kole Arnold", "phone": "859.779.2373", "email": "koledarnold2006@gmail.com", "start": "06/15/2026", "end": "12/15/2026", "lastLogin": "07/17/2026", "seatHrs": 0.9, "referredBy": "", "pipeline": "", "notes": "7/31 Saw some progress in a different email. Sent a text to Kole for clarification.\n---\n7/8 Introduced myself and congratulated on recent progress."}, {"name": "Zane Wilder", "phone": "859.420.2353", "email": "therealzane231050@gmail.com", "start": "06/19/2026", "end": "12/19/2026", "lastLogin": "07/22/2026", "seatHrs": 10.9, "referredBy": "", "pipeline": "", "notes": "7/24 Congratulated Zane on progress. No response.\n---\n7/8 Introduced myself."}, {"name": "Billie Farris", "phone": "859.358.7875", "email": "billifarris@gmail.com", "start": "06/24/2026", "end": "12/24/2026", "lastLogin": "08/05/2026", "seatHrs": 6.6, "referredBy": "", "pipeline": "", "notes": "8/13 Congratulated Billie on progress.\n---\n7/8 Introduced myself."}, {"name": "Ginetta Grizzell-Justice", "phone": "859-893-2226", "email": "gnwa223@uky.edu", "start": "07/01/2026", "end": "01/01/2027", "lastLogin": "07/01/2026", "seatHrs": 0, "referredBy": "", "pipeline": "", "notes": "7/8 Introduced myself."}, {"name": "Donnetta Mack", "phone": "606.309.5856", "email": "donnettasjourney@gmail.com", "start": "07/03/2026", "end": "01/03/2027", "lastLogin": "08/12/2026", "seatHrs": 15.5, "referredBy": "", "pipeline": "", "notes": "8/12 Asked me about getting her son in Kaplan. Sent contact info to Yvette.\n---\n7/8 Introduced myself."}, {"name": "Destiny Scaggs", "phone": "606.371.3663", "email": "dest.skaggs95@gmail.com", "start": "07/07/2026", "end": "01/07/2027", "lastLogin": "08/10/2026", "seatHrs": 3.7, "referredBy": "", "pipeline": "", "notes": "8/13 Congratulated Destiny on progress.\n---\n7/8 Introduced myself."}, {"name": "Ashley Cowherd", "phone": "859.893.2498", "email": "cherishedlife87@outlook.com", "start": "07/11/2026", "end": "01/11/2027", "lastLogin": "07/15/2026", "seatHrs": 2, "referredBy": "", "pipeline": "", "notes": ""}, {"name": "Zachery Christensen", "phone": "606.369.2268", "email": "christensen_zachery85@yahoo.com", "start": "07/21/2026", "end": "01/21/2027", "lastLogin": "08/10/2026", "seatHrs": 22.4, "referredBy": "", "pipeline": "", "notes": "8/13 Nearly 20 hours of seat time added! Congratulated Zach.\n---\n7/24 Introduced myself and congratulated Zach on progress."}, {"name": "Garrick Cowherd", "phone": "859.358.2200", "email": "mel.cowherd86@outlook.com", "start": "07/11/2026", "end": "01/11/2027", "lastLogin": "07/21/2026", "seatHrs": 0.9, "referredBy": "", "pipeline": "", "notes": ""}, {"name": "Davida Monroe", "phone": "859.376.2341", "email": "dmonroe232426@yahoo.com", "start": "07/24/2026", "end": "01/23/2027", "lastLogin": "07/28/2026", "seatHrs": 7.1, "referredBy": "", "pipeline": "", "notes": "5/13 Davida called office asking about extension."}, {"name": "Alexandra Bishop", "phone": "606.308.2023", "email": "alexandra.bishop29@gmail.com", "start": "07/28/2026", "end": "01/28/2027", "lastLogin": "08/13/2026", "seatHrs": 8.5, "referredBy": "", "pipeline": "", "notes": "8/13 Congratulated Alex on progress.\n---\n7/30 Asked which course to do in Kaplan. Provided her information."}, {"name": "Cheyenne Abney (New)", "phone": "859.447.4131", "email": "cheyenne2.abney@gmail.com", "start": "03/10/2026", "end": "09/10/2026", "lastLogin": "08/10/2026", "seatHrs": 33.9, "referredBy": "Stephanie Kelemen", "pipeline": "", "notes": "8/13 Congratulated Cheyenne on recent activity.\n---\n08/04/2026 Enrolled in Kaplan. Yvette completed onboarding call."}];
+const DB_URL = 'https://kwlg-tracker-default-rtdb.firebaseio.com';
+
+const PIPELINE_LABELS = {
+  '': 'In Kaplan',
+  'proctored': 'Proctored Passed',
+  'state': 'State Exam Prep',
+  'licensed': 'Licensed',
+  'onboarding': 'Onboarding',
+  'agent': 'Agent'
+};
+
+const PIPELINE_COLORS = {
+  '': '',
+  'proctored': {bg:'#e8f5e9',color:'#1b5e20'},
+  'state': {bg:'#E3F2FD',color:'#1565C0'},
+  'licensed': {bg:'#F3E5F5',color:'#6a1b9a'},
+  'onboarding': {bg:'#FFF8E1',color:'#856404'},
+  'agent': {bg:'#E8F5E9',color:'#2e7d32'}
+};
+
+const PIPELINE_ORDER = ['proctored','state','licensed','onboarding','agent'];
+
+let students = [];
+let activeTab = 'mon';
+let searchOpen = false;
+let saveTimer = null;
+
+function setSyncStatus(status, text) {
+  const el = document.getElementById('syncStatus');
+  el.className = 'sync-status sync-' + status;
+  el.textContent = text;
+}
+
+async function loadFromFirebase() {
+  try {
+    const res = await fetch(DB_URL + '/students.json');
+    if (!res.ok) throw new Error('Load failed');
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      students = data.map(s => ({pipeline: '', ...s}));
+      setSyncStatus('ok', 'Connected');
+    } else {
+      students = SEED.map(s => ({...s}));
+      await saveToFirebase();
+    }
+  } catch(e) {
+    setSyncStatus('error', 'Offline - using local data');
+    try {
+      const local = localStorage.getItem('kwlg_v5');
+      if (local) students = JSON.parse(local).map(s => ({pipeline: '', ...s}));
+      else students = SEED.map(s => ({...s}));
+    } catch(e2) {
+      students = SEED.map(s => ({...s}));
+    }
+  }
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('appContent').style.display = 'block';
+  renderAll();
+}
+
+async function saveToFirebase() {
+  setSyncStatus('saving', 'Saving...');
+  try {
+    const res = await fetch(DB_URL + '/students.json', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(students)
+    });
+    if (!res.ok) throw new Error('Save failed');
+    setSyncStatus('ok', 'Saved');
+    try { localStorage.setItem('kwlg_v5', JSON.stringify(students)); } catch(e) {}
+  } catch(e) {
+    setSyncStatus('error', 'Save failed - check connection');
+    try { localStorage.setItem('kwlg_v5', JSON.stringify(students)); } catch(e2) {}
+  }
+}
+
+function debounceSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  setSyncStatus('saving', 'Saving...');
+  saveTimer = setTimeout(() => saveToFirebase(), 1500);
+}
+
+function parseDate(str) {
+  if (!str||!str.trim()) return null;
+  const s=str.trim();
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return new Date(+m[3],+m[1]-1,+m[2]);
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  return null;
+}
+function today() { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function daysLeft(e) { const d=parseDate(e); return d?Math.round((d-today())/86400000):null; }
+function daysSince(l) { const d=parseDate(l); return d?Math.round((today()-d)/86400000):null; }
+function fromInput(s) {
+  if(!s) return '';
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m?m[2]+'/'+m[3]+'/'+m[1]:s;
+}
+function toInput(s) { const d=parseDate(s); if(!d) return ''; return d.toISOString().split('T')[0]; }
+
+function calcStatus(s) {
+  const dl=daysLeft(s.end), dsl=daysSince(s.lastLogin);
+  if(dl===null) return 'UNKNOWN';
+  if(dl<0) return 'EXPIRED';
+  if(dl<=30) return 'DEADLINE';
+  if(!s.lastLogin||!s.lastLogin.trim()) return 'NEVER';
+  if(dsl>=14) return 'GONE';
+  if(dsl>=7) return 'CHECK';
+  return 'ON';
+}
+function dayGroup(s) {
+  const dl=daysLeft(s.end);
+  if(dl===null) return 'fri';
+  if(dl<=30) return 'mon';
+  if(dl<=60) return 'wed';
+  return 'fri';
+}
+
+const SL={ON:'On Track',CHECK:'Check In',GONE:'Gone Quiet',DEADLINE:'Deadline Soon',NEVER:'Never Logged In',EXPIRED:'Expired',UNKNOWN:'Unknown'};
+const SC={ON:'s-ON',CHECK:'s-CHECK',GONE:'s-GONE',DEADLINE:'s-DEADLINE',NEVER:'s-NEVER',EXPIRED:'s-EXPIRED',UNKNOWN:'s-EXPIRED'};
+const SO=['EXPIRED','DEADLINE','NEVER','GONE','CHECK','ON','UNKNOWN'];
+
+function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function pipelineBadgeHtml(stage) {
+  if(!stage) return '';
+  const c = PIPELINE_COLORS[stage];
+  if(!c) return '';
+  return `<span class="pipeline-badge" style="background:${c.bg};color:${c.color}">${PIPELINE_LABELS[stage]}</span>`;
+}
+
+function acFilter(inputId,listId,valId) {
+  const q=document.getElementById(inputId).value.toLowerCase().trim();
+  const list=document.getElementById(listId);
+  document.getElementById(valId).value='';
+  if(!q){list.classList.remove('open');return;}
+  const matches=AGENTS.filter(a=>a.name.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){list.classList.remove('open');return;}
+  list.innerHTML=matches.map(a=>`<div class="autocomplete-item" onclick="acSelect('${inputId}','${listId}','${valId}','${esc(a.name)}')">${esc(a.name)}<div style="font-size:11px;color:#999">${esc(a.email)}</div></div>`).join('');
+  list.classList.add('open');
+}
+function acSelect(inputId,listId,valId,name) {
+  document.getElementById(inputId).value=name;
+  document.getElementById(valId).value=name;
+  document.getElementById(listId).classList.remove('open');
+}
+document.addEventListener('click',e=>{
+  document.querySelectorAll('.autocomplete-list').forEach(l=>{if(!l.contains(e.target))l.classList.remove('open');});
+});
+
+function renderAll() { renderSummary(); renderTabs(); renderContent(); }
+
+function renderSummary() {
+  const c={};
+  students.forEach(s=>{const st=calcStatus(s);c[st]=(c[st]||0)+1;});
+  const pipeCount = students.filter(s=>s.pipeline&&s.pipeline!=='').length;
+  const items=[
+    {l:'Expired',k:'EXPIRED',col:'#666'},
+    {l:'Deadline Soon',k:'DEADLINE',col:'#c62828'},
+    {l:'Gone Quiet',k:'GONE',col:'#bf360c'},
+    {l:'Check In',k:'CHECK',col:'#e65100'},
+    {l:'On Track',k:'ON',col:'#2e7d32'},
+    {l:'Never Logged In',k:'NEVER',col:'#4a148c'},
+    {l:'In Pipeline',k:'PIPE',col:'#1565C0',val:pipeCount},
+  ];
+  document.getElementById('summaryBar').innerHTML=items.map((it,i)=>
+    (i?'<div class="summary-divider"></div>':'')+
+    `<div class="summary-card"><div class="summary-dot" style="background:${it.col}"></div><div class="summary-label">${it.l}</div><div class="summary-num">${it.val!==undefined?it.val:(c[it.k]||0)}</div></div>`
+  ).join('');
+}
+
+function getQ() { const el=document.getElementById('searchInput'); return el?el.value.toLowerCase():''; }
+function matchQ(s,q) { return !q||s.name.toLowerCase().includes(q)||(s.phone||'').includes(q)||(s.email||'').toLowerCase().includes(q); }
+
+function renderTabs() {
+  const q=getQ(), grp={mon:0,wed:0,fri:0};
+  students.filter(s=>matchQ(s,q)).forEach(s=>{grp[dayGroup(s)]++;});
+  const pipeCount=students.filter(s=>s.pipeline&&s.pipeline!=='').length;
+  const refCount=[...new Set(students.filter(s=>s.referredBy&&s.referredBy.trim()).map(s=>s.referredBy.trim()))].length;
+  const tabs=[
+    {id:'mon',l:'Monday',cls:'mon',count:grp.mon},
+    {id:'wed',l:'Wednesday',cls:'wed',count:grp.wed},
+    {id:'fri',l:'Friday',cls:'fri',count:grp.fri},
+    {id:'all',l:'All Students',cls:'all',count:grp.mon+grp.wed+grp.fri},
+    {id:'pipe',l:'Pipeline',cls:'pipe',count:pipeCount},
+    {id:'ref',l:'Referrals',cls:'ref',count:refCount},
+  ];
+  document.getElementById('tabBar').innerHTML=tabs.map(t=>
+    `<div class="tab ${t.cls} ${activeTab===t.id?'active':''}" onclick="setTab('${t.id}')">${t.l}<span class="tab-count">${t.count}</span></div>`
+  ).join('');
+}
+
+function setTab(id) { activeTab=id; renderAll(); }
+
+function renderContent() {
+  if(activeTab==='pipe') { renderPipeline(); return; }
+  if(activeTab==='ref') { renderReferrals(); return; }
+  const q=getQ();
+  const filtered=students.filter(s=>matchQ(s,q));
+  const sections=activeTab==='all'
+    ?[{id:'mon',l:'MONDAY',sub:'Expired + 30 days or fewer remaining',cls:'mon'},
+      {id:'wed',l:'WEDNESDAY',sub:'31 to 60 days remaining',cls:'wed'},
+      {id:'fri',l:'FRIDAY',sub:'61+ days remaining',cls:'fri'}]
+    :[{id:activeTab,
+       l:activeTab==='mon'?'MONDAY':activeTab==='wed'?'WEDNESDAY':'FRIDAY',
+       sub:activeTab==='mon'?'Expired + 30 days or fewer remaining':
+           activeTab==='wed'?'31 to 60 days remaining':
+           '61+ days remaining',
+       cls:activeTab}];
+
+  let html='';
+  sections.forEach(sec=>{
+    const gs=filtered.filter(s=>dayGroup(s)===sec.id)
+      .sort((a,b)=>SO.indexOf(calcStatus(a))-SO.indexOf(calcStatus(b)));
+    if(!gs.length&&activeTab!=='all'){html+=`<div class="empty"><div class="empty-icon">✓</div><div class="empty-text">No students in this group right now.</div></div>`;return;}
+    if(!gs.length) return;
+    html+=`<div class="section-label ${sec.cls}"><strong>${sec.l}</strong><span class="section-count">— ${sec.sub} · ${gs.length} student${gs.length!==1?'s':''}</span></div><div class="cards">${gs.map(s=>renderCard(s,sec.cls)).join('')}</div>`;
+  });
+  document.getElementById('content').innerHTML=html||`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">No students match your search.</div></div>`;
+}
+
+function renderPipeline() {
+  const stages = PIPELINE_ORDER;
+  const byStage = {};
+  stages.forEach(s=>{byStage[s]=[];});
+  students.forEach(s=>{
+    if(s.pipeline && byStage[s.pipeline]) byStage[s.pipeline].push(s);
+  });
+  const total = stages.reduce((sum,s)=>sum+byStage[s].length,0);
+
+  if(total===0) {
+    document.getElementById('content').innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No students in the pipeline yet. Open a student card and set their Pipeline Stage to move them here.</div></div>`;
+    return;
+  }
+
+  const colColors = {
+    proctored:{hdr:'color:#1b5e20;background:#e8f5e9;border-color:#a5d6a7'},
+    state:{hdr:'color:#1565C0;background:#E3F2FD;border-color:#90CAF9'},
+    licensed:{hdr:'color:#6a1b9a;background:#F3E5F5;border-color:#ce93d8'},
+    onboarding:{hdr:'color:#856404;background:#FFF8E1;border-color:#ffe082'},
+    agent:{hdr:'color:#2e7d32;background:#E8F5E9;border-color:#a5d6a7'},
+  };
+
+  let html=`<div class="section-label pipe"><strong>PIPELINE</strong><span class="section-count">— agents working toward their license · ${total} total</span></div>`;
+  html+=`<div class="pipeline-grid">`;
+
+  stages.forEach(stage=>{
+    const col = colColors[stage];
+    const items = byStage[stage];
+    html+=`<div class="pipeline-col">
+      <div class="pipeline-col-header" style="${col.hdr}">${PIPELINE_LABELS[stage]} (${items.length})</div>`;
+    if(items.length===0) {
+      html+=`<div class="pipeline-empty">None yet</div>`;
+    } else {
+      items.forEach(s=>{
+        const dl=daysLeft(s.end);
+        html+=`<div class="pipeline-col-item">
+          <div class="pipeline-col-item-name">${esc(s.name)}</div>
+          <div class="pipeline-col-item-sub">${s.phone||'No phone'}</div>
+          ${dl!==null?`<div class="pipeline-col-item-sub">Scholarship: ${dl<0?Math.abs(dl)+' days over':dl+' days left'}</div>`:''}
+        </div>`;
+      });
+    }
+    html+=`</div>`;
+  });
+
+  html+=`</div>`;
+  document.getElementById('content').innerHTML=html;
+}
+
+function renderCard(s,grpCls) {
+  const idx=students.indexOf(s),st=calcStatus(s),dl=daysLeft(s.end),dsl=daysSince(s.lastLogin);
+  const pipe=s.pipeline||'';
+  return `<div class="card" id="card-${idx}">
+    <div class="card-header" onclick="toggleCard(${idx})">
+      <div class="card-accent ${grpCls}"></div>
+      <div class="card-main">
+        <div style="min-width:0;flex:1">
+          <div class="card-name">${esc(s.name)}</div>
+          <div class="card-phone">${s.phone||'No phone'}</div>
+          ${s.referredBy?`<div class="card-ref-badge">${esc(s.referredBy)}</div>`:''}
+          ${pipelineBadgeHtml(pipe)}
+        </div>
+        <div class="card-meta">
+          <div class="card-stat">
+            <div class="card-stat-num ${dl!==null&&dl<=30?'warn':''}">${dl===null?'--':dl<0?Math.abs(dl)+' over':dl}</div>
+            <div class="card-stat-label">${dl!==null&&dl<0?'Days Over':'Days Left'}</div>
+          </div>
+          <div class="card-stat">
+            <div class="card-stat-num ${dsl!==null&&dsl>=14?'warn':''}">${dsl===null?'Never':dsl}</div>
+            <div class="card-stat-label">Days Since Login</div>
+          </div>
+          <div class="card-stat">
+            <div class="card-stat-num">${s.seatHrs||0}</div>
+            <div class="card-stat-label">Seat Hrs</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <span class="status-badge ${SC[st]}">${SL[st]||st}</span>
+        <span class="chevron">▾</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-body-grid">
+        <div class="field-group">
+          <div class="field"><div class="field-label">Phone</div><input id="f-${idx}-phone" value="${esc(s.phone||'')}"/></div>
+          <div class="field"><div class="field-label">Email</div><input id="f-${idx}-email" value="${esc(s.email||'')}"/></div>
+          <div class="field"><div class="field-label">Last Login (from Kaplan)</div><input id="f-${idx}-login" type="date" value="${toInput(s.lastLogin)}"/></div>
+          <div class="field"><div class="field-label">Seat Hours (from Kaplan)</div><input id="f-${idx}-seat" type="number" step="0.1" value="${s.seatHrs||0}"/></div>
+          <div class="field"><div class="field-label">Start Date</div><input id="f-${idx}-start" type="date" value="${toInput(s.start)}"/></div>
+          <div class="field"><div class="field-label">End Date</div><input id="f-${idx}-end" type="date" value="${toInput(s.end)}"/></div>
+          <div class="field">
+            <div class="field-label">Pipeline Stage</div>
+            <select id="f-${idx}-pipeline">
+              <option value="" ${pipe===''?'selected':''}>In Kaplan</option>
+              <option value="proctored" ${pipe==='proctored'?'selected':''}>Proctored Passed</option>
+              <option value="state" ${pipe==='state'?'selected':''}>State Exam Prep</option>
+              <option value="licensed" ${pipe==='licensed'?'selected':''}>Licensed</option>
+              <option value="onboarding" ${pipe==='onboarding'?'selected':''}>Onboarding</option>
+              <option value="agent" ${pipe==='agent'?'selected':''}>Agent</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Referred By</div>
+            <div class="autocomplete-wrap">
+              <input id="f-${idx}-ref" value="${esc(s.referredBy||'')}" autocomplete="off" oninput="acFilter('f-${idx}-ref','f-${idx}-ref-list','f-${idx}-ref-val')"/>
+              <div class="autocomplete-list" id="f-${idx}-ref-list"></div>
+              <input type="hidden" id="f-${idx}-ref-val" value="${esc(s.referredBy||'')}"/>
+            </div>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <div class="field-label">Notes (newest at top)</div>
+            <textarea id="f-${idx}-notes" rows="12">${esc(s.notes||'')}</textarea>
+            <div class="notes-hint">Format: 8/21 Called, said she is on chapter 4.</div>
+          </div>
+        </div>
+      </div>
+      <div class="save-row">
+        <div class="save-confirm" id="confirm-${idx}">✓ Saved to database</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCard(${idx})">Close</button>
+        <button class="btn btn-primary btn-sm" onclick="saveCard(${idx})">Save Changes</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(idx) { document.getElementById('card-'+idx).classList.toggle('open'); }
+
+function saveCard(idx) {
+  const g=id=>document.getElementById(id);
+  const refInput=g('f-'+idx+'-ref').value.trim();
+  const refVal=g('f-'+idx+'-ref-val').value.trim();
+  students[idx].phone      = g('f-'+idx+'-phone').value.trim();
+  students[idx].email      = g('f-'+idx+'-email').value.trim();
+  students[idx].lastLogin  = fromInput(g('f-'+idx+'-login').value);
+  students[idx].seatHrs    = parseFloat(g('f-'+idx+'-seat').value)||0;
+  students[idx].start      = fromInput(g('f-'+idx+'-start').value);
+  students[idx].end        = fromInput(g('f-'+idx+'-end').value);
+  students[idx].pipeline   = g('f-'+idx+'-pipeline').value;
+  students[idx].referredBy = refVal||refInput;
+  students[idx].notes      = g('f-'+idx+'-notes').value;
+  debounceSave();
+  renderSummary();
+  renderTabs();
+  const c=document.getElementById('confirm-'+idx);
+  c.classList.add('show');
+  setTimeout(()=>c.classList.remove('show'),3000);
+}
+
+function renderReferrals() {
+  const referred=students.filter(s=>s.referredBy&&s.referredBy.trim());
+  if(!referred.length){document.getElementById('content').innerHTML='<div class="empty"><div class="empty-icon">👤</div><div class="empty-text">No referrals recorded yet.</div></div>';return;}
+  const byAgent={};
+  referred.forEach(s=>{
+    const key=s.referredBy.trim();
+    if(!byAgent[key]) byAgent[key]={name:key,students:[]};
+    byAgent[key].students.push(s);
+  });
+  const sorted=Object.values(byAgent).sort((a,b)=>b.students.length-a.students.length);
+  const agentInfo=name=>AGENTS.find(a=>a.name.toLowerCase()===name.toLowerCase())||{};
+  let html=`<div class="section-label" style="color:#6a1b9a;background:#f3e5f5;border:1px solid #ce93d8;margin-bottom:16px"><strong>REFERRAL DASHBOARD</strong><span class="section-count">— ${sorted.length} agents · ${referred.length} referrals</span></div>`;
+  sorted.forEach((ag,ai)=>{
+    const info=agentInfo(ag.name);
+    const stuHtml=ag.students.map(s=>{
+      const st=calcStatus(s);
+      return `<div class="ref-student-row">
+        <div>
+          <div style="font-weight:600;font-size:13px">${esc(s.name)}</div>
+          <div style="font-size:12px;color:var(--text2)">${s.phone||'No phone'} · End: ${s.end||'--'} · Seat Hrs: ${s.seatHrs||0}</div>
+          ${s.pipeline?`<div style="font-size:11px;color:#1565C0;margin-top:2px">${PIPELINE_LABELS[s.pipeline]}</div>`:''}
+        </div>
+        <span class="status-badge ${SC[st]}">${SL[st]||st}</span>
+      </div>`;
+    }).join('');
+    html+=`<div class="ref-agent-card" id="ref-${ai}">
+      <div class="ref-agent-header" onclick="document.getElementById('ref-${ai}').classList.toggle('open')">
+        <div><div class="ref-agent-name">${esc(ag.name)}</div>${info.email?`<div class="ref-agent-email">${info.email}</div>`:'' }</div>
+        <div style="display:flex;align-items:center;gap:10px"><span class="ref-agent-count">${ag.students.length} referral${ag.students.length!==1?'s':''}</span><span class="chevron">▾</span></div>
+      </div>
+      <div class="ref-agent-body">${stuHtml}</div>
+    </div>`;
+  });
+  document.getElementById('content').innerHTML=html;
+}
+
+function openAddModal() { document.getElementById('addModal').classList.add('open'); }
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+
+document.getElementById('new-start').addEventListener('change',function(){
+  if(!this.value) return;
+  const d=new Date(this.value+'T00:00:00'); d.setMonth(d.getMonth()+6);
+  document.getElementById('new-end').value=d.toISOString().split('T')[0];
+});
+
+function saveNewStudent() {
+  const name=document.getElementById('new-name').value.trim();
+  if(!name){alert('Please enter a name.');return;}
+  const refInput=document.getElementById('new-ref').value.trim();
+  const refVal=document.getElementById('new-ref-val').value.trim();
+  students.push({
+    name,
+    phone: document.getElementById('new-phone').value.trim(),
+    email: document.getElementById('new-email').value.trim(),
+    start: fromInput(document.getElementById('new-start').value),
+    end:   fromInput(document.getElementById('new-end').value),
+    lastLogin: '',
+    seatHrs: 0,
+    referredBy: refVal||refInput,
+    pipeline: document.getElementById('new-pipeline').value,
+    notes: document.getElementById('new-note').value.trim(),
+  });
+  saveToFirebase();
+  closeAddModal();
+  ['new-name','new-phone','new-email','new-start','new-end','new-ref','new-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('new-ref-val').value='';
+  document.getElementById('new-pipeline').value='';
+  activeTab='fri';
+  renderAll();
+}
+
+function toggleSearch() {
+  searchOpen=!searchOpen;
+  const bar=document.getElementById('searchBar');
+  bar.style.display=searchOpen?'block':'none';
+  if(searchOpen) document.getElementById('searchInput').focus();
+  else { document.getElementById('searchInput').value=''; renderAll(); }
+}
+
+document.getElementById('headerDate').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+loadFromFirebase();
+</script>
+</body>
+</html>
